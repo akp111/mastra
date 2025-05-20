@@ -6,3 +6,5 @@ export * from './workflow';
 export * from './tool';
 export * from './base';
 export * from './vnext-workflow';
+export * from './a2a';
+export * from './mcp-tool';

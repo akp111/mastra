@@ -9,6 +9,10 @@ import type {
   CreateIndexArgs,
   UpsertVectorArgs,
   QueryVectorArgs,
+  UpdateVectorParams,
+  DeleteVectorParams,
+  DescribeIndexParams,
+  DeleteIndexParams,
 } from './types';
 
 export abstract class MastraVector extends MastraBase {
@@ -38,7 +42,7 @@ export abstract class MastraVector extends MastraBase {
     this.logger.warn(
       `Deprecation Warning: Passing individual arguments to ${method}() is deprecated.
       Please use an object parameter instead.
-      Individual arguments will be removed on May 20th.`,
+      Individual arguments will be removed on May 20th, 2025.`,
     );
 
     const baseKeys = this.baseKeys[method as keyof typeof this.baseKeys] || [];
@@ -64,25 +68,18 @@ export abstract class MastraVector extends MastraBase {
 
   abstract listIndexes(): Promise<string[]>;
 
-  abstract describeIndex(indexName: string): Promise<IndexStats>;
+  abstract describeIndex(...args: ParamsToArgs<DescribeIndexParams>): Promise<IndexStats>;
 
-  abstract deleteIndex(indexName: string): Promise<void>;
+  abstract deleteIndex(...args: ParamsToArgs<DeleteIndexParams>): Promise<void>;
 
-  async updateIndexById(
-    _indexName: string,
-    _id: string,
-    _update: { vector?: number[]; metadata?: Record<string, any> },
-  ): Promise<void> {
-    throw new Error('updateIndexById is not implemented yet');
-  }
-  async deleteIndexById(_indexName: string, _id: string): Promise<void> {
-    throw new Error('deleteById is not implemented yet');
-  }
+  abstract updateVector(...args: ParamsToArgs<UpdateVectorParams>): Promise<void>;
+
+  abstract deleteVector(...args: ParamsToArgs<DeleteVectorParams>): Promise<void>;
 
   protected async validateExistingIndex(indexName: string, dimension: number, metric: string) {
     let info: IndexStats;
     try {
-      info = await this.describeIndex(indexName);
+      info = await this.describeIndex({ indexName });
     } catch (infoError) {
       const message = `Index "${indexName}" already exists, but failed to fetch index info for dimension check: ${infoError}`;
       this.logger?.error(message);

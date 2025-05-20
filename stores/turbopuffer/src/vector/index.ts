@@ -1,8 +1,13 @@
 import type {
   CreateIndexParams,
+  DeleteIndexParams,
+  DeleteVectorParams,
+  DescribeIndexParams,
   IndexStats,
+  ParamsToArgs,
   QueryResult,
   QueryVectorParams,
+  UpdateVectorParams,
   UpsertVectorParams,
 } from '@mastra/core/vector';
 import { MastraVector } from '@mastra/core/vector';
@@ -216,7 +221,16 @@ export class TurbopufferVector extends MastraVector {
     }
   }
 
-  async describeIndex(indexName: string): Promise<IndexStats> {
+  /**
+   * Retrieves statistics about a vector index.
+   *
+   * @param params - The parameters for describing an index
+   * @param params.indexName - The name of the index to describe
+   * @returns A promise that resolves to the index statistics including dimension, count and metric
+   */
+  async describeIndex(...args: ParamsToArgs<DescribeIndexParams>): Promise<IndexStats> {
+    const params = this.normalizeArgs<DescribeIndexParams>('describeIndex', args);
+    const { indexName } = params;
     try {
       const namespace = this.client.namespace(indexName);
       const metadata = await namespace.metadata();
@@ -236,11 +250,64 @@ export class TurbopufferVector extends MastraVector {
     }
   }
 
-  async deleteIndex(indexName: string): Promise<void> {
+  async deleteIndex(...args: ParamsToArgs<DeleteIndexParams>): Promise<void> {
+    const params = this.normalizeArgs<DeleteIndexParams>('deleteIndex', args);
+    const { indexName } = params;
     try {
       const namespace = this.client.namespace(indexName);
       await namespace.deleteAll();
       this.createIndexCache.delete(indexName);
+    } catch (error: any) {
+      throw new Error(`Failed to delete Turbopuffer namespace ${indexName}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Updates a vector by its ID with the provided vector and/or metadata.
+   * @param indexName - The name of the index containing the vector.
+   * @param id - The ID of the vector to update.
+   * @param update - An object containing the vector and/or metadata to update.
+   * @param update.vector - An optional array of numbers representing the new vector.
+   * @param update.metadata - An optional record containing the new metadata.
+   * @returns A promise that resolves when the update is complete.
+   * @throws Will throw an error if no updates are provided or if the update operation fails.
+   */
+  async updateVector(...args: ParamsToArgs<UpdateVectorParams>): Promise<void> {
+    const params = this.normalizeArgs<UpdateVectorParams>('updateVector', args);
+    const { indexName, id, update } = params;
+    try {
+      const namespace = this.client.namespace(indexName);
+      const createIndex = this.createIndexCache.get(indexName);
+      if (!createIndex) {
+        throw new Error(`createIndex() not called for this index`);
+      }
+      const distanceMetric = createIndex.tpufDistanceMetric;
+      const record: any = { id };
+      if (update.vector) record.vector = update.vector;
+      if (update.metadata) record.attributes = update.metadata;
+
+      await namespace.upsert({
+        vectors: [record],
+        distance_metric: distanceMetric,
+      });
+    } catch (error: any) {
+      throw new Error(`Failed to update Turbopuffer namespace ${indexName}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Deletes a vector by its ID.
+   * @param indexName - The name of the index containing the vector.
+   * @param id - The ID of the vector to delete.
+   * @returns A promise that resolves when the deletion is complete.
+   * @throws Will throw an error if the deletion operation fails.
+   */
+  async deleteVector(...args: ParamsToArgs<DeleteVectorParams>): Promise<void> {
+    const params = this.normalizeArgs<DeleteVectorParams>('deleteVector', args);
+    const { indexName, id } = params;
+    try {
+      const namespace = this.client.namespace(indexName);
+      await namespace.delete({ ids: [id] });
     } catch (error: any) {
       throw new Error(`Failed to delete Turbopuffer namespace ${indexName}: ${error.message}`);
     }

@@ -1,7 +1,7 @@
 import { ReadableStream } from 'node:stream/web';
-import type { RuntimeContext } from '@mastra/core/di';
-import type { WorkflowRuns } from '@mastra/core/storage';
-import type { NewWorkflow } from '@mastra/core/workflows/vNext';
+import { RuntimeContext } from '@mastra/core/di';
+import type { VNextWorkflowRuns } from '@mastra/core/storage';
+import type { NewWorkflow, SerializedStepFlowEntry } from '@mastra/core/workflows/vNext';
 import { stringify } from 'superjson';
 import zodToJsonSchema from 'zod-to-json-schema';
 import { HTTPException } from '../http-exception';
@@ -19,6 +19,7 @@ export async function getVNextWorkflowsHandler({ mastra }: VNextWorkflowContext)
     const _workflows = Object.entries(workflows).reduce<any>((acc, [key, workflow]) => {
       acc[key] = {
         name: workflow.name,
+        description: workflow.description,
         steps: Object.entries(workflow.steps).reduce<any>((acc, [key, step]) => {
           acc[key] = {
             id: step.id,
@@ -42,7 +43,23 @@ export async function getVNextWorkflowsHandler({ mastra }: VNextWorkflowContext)
   }
 }
 
-export async function getVNextWorkflowByIdHandler({ mastra, workflowId }: VNextWorkflowContext) {
+type SerializedStep = {
+  id: string;
+  description: string;
+  inputSchema: string | undefined;
+  outputSchema: string | undefined;
+  resumeSchema: string | undefined;
+  suspendSchema: string | undefined;
+};
+
+export async function getVNextWorkflowByIdHandler({ mastra, workflowId }: VNextWorkflowContext): Promise<{
+  steps: SerializedStep[];
+  name: string | undefined;
+  description: string | undefined;
+  stepGraph: SerializedStepFlowEntry[];
+  inputSchema: string | undefined;
+  outputSchema: string | undefined;
+}> {
   try {
     if (!workflowId) {
       throw new HTTPException(400, { message: 'Workflow ID is required' });
@@ -67,6 +84,7 @@ export async function getVNextWorkflowByIdHandler({ mastra, workflowId }: VNextW
         return acc;
       }, {}),
       name: workflow.name,
+      description: workflow.description,
       stepGraph: workflow.serializedStepGraph,
       inputSchema: workflow.inputSchema ? stringify(zodToJsonSchema(workflow.inputSchema)) : undefined,
       outputSchema: workflow.outputSchema ? stringify(zodToJsonSchema(workflow.outputSchema)) : undefined,
@@ -140,9 +158,11 @@ export async function startAsyncVNextWorkflowHandler({
   workflowId,
   runId,
   inputData,
+  runtimeContextFromRequest,
 }: Pick<VNextWorkflowContext, 'mastra' | 'workflowId' | 'runId'> & {
   inputData?: unknown;
   runtimeContext?: RuntimeContext;
+  runtimeContextFromRequest?: Record<string, unknown>;
 }) {
   try {
     if (!workflowId) {
@@ -155,10 +175,15 @@ export async function startAsyncVNextWorkflowHandler({
       throw new HTTPException(404, { message: 'Workflow not found' });
     }
 
+    const finalRuntimeContext = new RuntimeContext<Record<string, unknown>>([
+      ...Array.from(runtimeContext?.entries() ?? []),
+      ...Array.from(Object.entries(runtimeContextFromRequest ?? {})),
+    ]);
+
     const _run = workflow.createRun({ runId });
     const result = await _run.start({
       inputData,
-      runtimeContext,
+      runtimeContext: finalRuntimeContext,
     });
     return result;
   } catch (error) {
@@ -172,9 +197,11 @@ export async function startVNextWorkflowRunHandler({
   workflowId,
   runId,
   inputData,
+  runtimeContextFromRequest,
 }: Pick<VNextWorkflowContext, 'mastra' | 'workflowId' | 'runId'> & {
   inputData?: unknown;
   runtimeContext?: RuntimeContext;
+  runtimeContextFromRequest?: Record<string, unknown>;
 }) {
   try {
     if (!workflowId) {
@@ -192,10 +219,15 @@ export async function startVNextWorkflowRunHandler({
       throw new HTTPException(404, { message: 'Workflow run not found' });
     }
 
+    const finalRuntimeContext = new RuntimeContext<Record<string, unknown>>([
+      ...Array.from(runtimeContext?.entries() ?? []),
+      ...Array.from(Object.entries(runtimeContextFromRequest ?? {})),
+    ]);
+
     const _run = workflow.createRun({ runId });
-    await _run.start({
+    void _run.start({
       inputData,
-      runtimeContext,
+      runtimeContext: finalRuntimeContext,
     });
 
     return { message: 'Workflow run started' };
@@ -238,7 +270,7 @@ export async function watchVNextWorkflowHandler({
             asyncRef = null;
           }
 
-          // a run is finished if we cannot retrieve it anymore
+          // a run is finished if the status is not running
           asyncRef = setImmediate(async () => {
             const runDone = payload.workflowState.status !== 'running';
             if (runDone) {
@@ -265,9 +297,11 @@ export async function resumeAsyncVNextWorkflowHandler({
   runId,
   body,
   runtimeContext,
+  runtimeContextFromRequest,
 }: VNextWorkflowContext & {
   body: { step: string | string[]; resumeData?: unknown };
   runtimeContext?: RuntimeContext;
+  runtimeContextFromRequest?: Record<string, unknown>;
 }) {
   try {
     if (!workflowId) {
@@ -289,12 +323,16 @@ export async function resumeAsyncVNextWorkflowHandler({
       throw new HTTPException(404, { message: 'Workflow run not found' });
     }
 
-    const _run = workflow.createRun({ runId });
+    const finalRuntimeContext = new RuntimeContext<Record<string, unknown>>([
+      ...Array.from(runtimeContext?.entries() ?? []),
+      ...Array.from(Object.entries(runtimeContextFromRequest ?? {})),
+    ]);
 
+    const _run = workflow.createRun({ runId });
     const result = await _run.resume({
       step: body.step,
       resumeData: body.resumeData,
-      runtimeContext,
+      runtimeContext: finalRuntimeContext,
     });
 
     return result;
@@ -335,7 +373,7 @@ export async function resumeVNextWorkflowHandler({
 
     const _run = workflow.createRun({ runId });
 
-    await _run.resume({
+    void _run.resume({
       step: body.step,
       resumeData: body.resumeData,
       runtimeContext,
@@ -361,7 +399,7 @@ export async function getVNextWorkflowRunsHandler({
   limit?: number;
   offset?: number;
   resourceId?: string;
-}): Promise<WorkflowRuns> {
+}): Promise<VNextWorkflowRuns> {
   try {
     if (!workflowId) {
       throw new HTTPException(400, { message: 'Workflow ID is required' });

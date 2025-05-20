@@ -8,6 +8,12 @@ import type {
   ParamsToArgs,
   QueryVectorArgs,
   UpsertVectorArgs,
+  DescribeIndexParams,
+  DeleteIndexParams,
+  DeleteVectorParams,
+  DeleteVectorArgs,
+  UpdateVectorParams,
+  UpdateVectorArgs,
 } from '@mastra/core/vector';
 import type { VectorFilter } from '@mastra/core/vector/filter';
 import { Pinecone } from '@pinecone-database/pinecone';
@@ -38,18 +44,52 @@ interface PineconeUpsertVectorParams extends UpsertVectorParams {
 
 type PineconeUpsertVectorArgs = [...UpsertVectorArgs, string?, RecordSparseValues[]?];
 
+interface PineconeUpdateVectorParams extends UpdateVectorParams {
+  namespace?: string;
+}
+
+type PineconeUpdateVectorArgs = [...UpdateVectorArgs, string?];
+
+interface PineconeDeleteVectorParams extends DeleteVectorParams {
+  namespace?: string;
+}
+
+type PineconeDeleteVectorArgs = [...DeleteVectorArgs, string?];
+
 export class PineconeVector extends MastraVector {
   private client: Pinecone;
 
-  constructor(apiKey: string, environment?: string) {
+  /**
+   * @deprecated Passing apiKey and environment as positional arguments is deprecated.
+   * Use the object parameter instead. This signature will be removed on May 20th, 2025.
+   */
+  constructor(apiKey: string, environment?: string);
+  /**
+   * Creates a new PineconeVector client.
+   * @param params - An object with apiKey and optional environment.
+   */
+  constructor(params: { apiKey: string; environment?: string });
+  constructor(paramsOrApiKey: { apiKey: string; environment?: string } | string, environment?: string) {
     super();
-
-    const opts: { apiKey: string; controllerHostUrl?: string } = { apiKey };
-
-    if (environment) {
-      opts['controllerHostUrl'] = environment;
+    let apiKey: string;
+    let env: string | undefined;
+    if (typeof paramsOrApiKey === 'string') {
+      // DEPRECATION WARNING
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn(
+          `Deprecation Warning: Passing apiKey and environment as positional arguments to PineconeVector constructor is deprecated.\nPlease use an object parameter instead:\n  new PineconeVector({ apiKey, environment })\nThis signature will be removed on May 20th, 2025.`,
+        );
+      }
+      apiKey = paramsOrApiKey;
+      env = environment;
+    } else {
+      apiKey = paramsOrApiKey.apiKey;
+      env = paramsOrApiKey.environment;
     }
-
+    const opts: { apiKey: string; controllerHostUrl?: string } = { apiKey };
+    if (env) {
+      opts['controllerHostUrl'] = env;
+    }
     const baseClient = new Pinecone(opts);
     const telemetry = this.__getTelemetry();
     this.client =
@@ -180,7 +220,16 @@ export class PineconeVector extends MastraVector {
     return indexesResult?.indexes?.map(index => index.name) || [];
   }
 
-  async describeIndex(indexName: string): Promise<PineconeIndexStats> {
+  /**
+   * Retrieves statistics about a vector index.
+   *
+   * @param params - The parameters for describing an index
+   * @param params.indexName - The name of the index to describe
+   * @returns A promise that resolves to the index statistics including dimension, count and metric
+   */
+  async describeIndex(...args: ParamsToArgs<DescribeIndexParams>): Promise<PineconeIndexStats> {
+    const params = this.normalizeArgs<DescribeIndexParams>('describeIndex', args);
+    const { indexName } = params;
     const index = this.client.Index(indexName);
     const stats = await index.describeIndexStats();
     const description = await this.client.describeIndex(indexName);
@@ -193,44 +242,118 @@ export class PineconeVector extends MastraVector {
     };
   }
 
-  async deleteIndex(indexName: string): Promise<void> {
+  async deleteIndex(...args: ParamsToArgs<DeleteIndexParams>): Promise<void> {
+    const params = this.normalizeArgs<DeleteIndexParams>('deleteIndex', args);
+    const { indexName } = params;
     try {
       await this.client.deleteIndex(indexName);
     } catch (error: any) {
       throw new Error(`Failed to delete Pinecone index: ${error.message}`);
     }
   }
-
+  /**
+   * @deprecated Use {@link updateVector} instead. This method will be removed on May 20th, 2025.
+   *
+   * Updates a vector by its ID with the provided vector and/or metadata.
+   * @param indexName - The name of the index containing the vector.
+   * @param id - The ID of the vector to update.
+   * @param update - An object containing the vector and/or metadata to update.
+   * @param update.vector - An optional array of numbers representing the new vector.
+   * @param update.metadata - An optional record containing the new metadata.
+   * @param namespace - The namespace of the index (optional).
+   * @returns A promise that resolves when the update is complete.
+   * @throws Will throw an error if no updates are provided or if the update operation fails.
+   */
   async updateIndexById(
     indexName: string,
     id: string,
-    update: {
-      vector?: number[];
-      metadata?: Record<string, any>;
-    },
+    update: { vector?: number[]; metadata?: Record<string, any> },
     namespace?: string,
   ): Promise<void> {
-    if (!update.vector && !update.metadata) {
-      throw new Error('No updates provided');
-    }
-
-    const index = this.client.Index(indexName).namespace(namespace || '');
-
-    const updateObj: UpdateOptions = { id };
-
-    if (update.vector) {
-      updateObj.values = update.vector;
-    }
-
-    if (update.metadata) {
-      updateObj.metadata = update.metadata;
-    }
-
-    await index.update(updateObj);
+    this.logger.warn(
+      `Deprecation Warning: updateIndexById() is deprecated. 
+      Please use updateVector() instead. 
+      updateIndexById() will be removed on May 20th, 2025.`,
+    );
+    await this.updateVector({ indexName, id, update, namespace });
   }
 
+  /**
+   * Updates a vector by its ID with the provided vector and/or metadata.
+   * @param indexName - The name of the index containing the vector.
+   * @param id - The ID of the vector to update.
+   * @param update - An object containing the vector and/or metadata to update.
+   * @param update.vector - An optional array of numbers representing the new vector.
+   * @param update.metadata - An optional record containing the new metadata.
+   * @param namespace - The namespace of the index (optional).
+   * @returns A promise that resolves when the update is complete.
+   * @throws Will throw an error if no updates are provided or if the update operation fails.
+   */
+  async updateVector(...args: ParamsToArgs<PineconeUpdateVectorParams> | PineconeUpdateVectorArgs): Promise<void> {
+    const params = this.normalizeArgs<PineconeUpdateVectorParams, PineconeUpdateVectorArgs>('updateVector', args, [
+      'namespace',
+    ]);
+    const { indexName, id, update, namespace } = params;
+    try {
+      if (!update.vector && !update.metadata) {
+        throw new Error('No updates provided');
+      }
+
+      const index = this.client.Index(indexName).namespace(namespace || '');
+
+      const updateObj: UpdateOptions = { id };
+
+      if (update.vector) {
+        updateObj.values = update.vector;
+      }
+
+      if (update.metadata) {
+        updateObj.metadata = update.metadata;
+      }
+
+      await index.update(updateObj);
+    } catch (error: any) {
+      throw new Error(`Failed to update vector by id: ${id} for index name: ${indexName}: ${error.message}`);
+    }
+  }
+
+  /**
+   * @deprecated Use {@link deleteVector} instead. This method will be removed on May 20th, 2025.
+   *
+   * Deletes a vector by its ID.
+   * @param indexName - The name of the index containing the vector.
+   * @param id - The ID of the vector to delete.
+   * @param namespace - The namespace of the index (optional).
+   * @returns A promise that resolves when the deletion is complete.
+   * @throws Will throw an error if the deletion operation fails.
+   */
   async deleteIndexById(indexName: string, id: string, namespace?: string): Promise<void> {
-    const index = this.client.Index(indexName).namespace(namespace || '');
-    await index.deleteOne(id);
+    this.logger.warn(
+      `Deprecation Warning: deleteIndexById() is deprecated. 
+      Please use deleteVector() instead. 
+      deleteIndexById() will be removed on May 20th, 2025.`,
+    );
+    await this.deleteVector({ indexName, id, namespace });
+  }
+
+  /**
+   * Deletes a vector by its ID.
+   * @param indexName - The name of the index containing the vector.
+   * @param id - The ID of the vector to delete.
+   * @param namespace - The namespace of the index (optional).
+   * @returns A promise that resolves when the deletion is complete.
+   * @throws Will throw an error if the deletion operation fails.
+   */
+  async deleteVector(...args: ParamsToArgs<PineconeDeleteVectorParams> | PineconeDeleteVectorArgs): Promise<void> {
+    const params = this.normalizeArgs<PineconeDeleteVectorParams, PineconeDeleteVectorArgs>('deleteVector', args, [
+      'namespace',
+    ]);
+    const { indexName, id, namespace } = params;
+    try {
+      const index = this.client.Index(indexName).namespace(namespace || '');
+      await index.deleteOne(id);
+    } catch (error: any) {
+      throw new Error(`Failed to delete vector by id: ${id} for index name: ${indexName}: ${error.message}`);
+    }
   }
 }

@@ -1,4 +1,3 @@
-import type EventEmitter from 'events';
 import type { z } from 'zod';
 import type { Mastra } from '../..';
 import type { RuntimeContext } from '../../di';
@@ -10,6 +9,7 @@ export type ExecuteFunction<TStepInput, TStepOutput, TResumeSchema, TSuspendSche
   runtimeContext: RuntimeContext;
   inputData: TStepInput;
   resumeData?: TResumeSchema;
+  getInitData<T extends z.ZodType<any>>(): z.infer<T>;
   getInitData<T extends NewWorkflow<any, any, any, any, any>>(): T extends undefined
     ? unknown
     : z.infer<NonNullable<T['inputSchema']>>;
@@ -22,7 +22,7 @@ export type ExecuteFunction<TStepInput, TStepOutput, TResumeSchema, TSuspendSche
     steps: string[];
     resumePayload: any;
   };
-  emitter: EventEmitter;
+  emitter: { emit: (event: string, data: any) => Promise<void> };
 }) => Promise<TStepOutput>;
 
 // Define a Step interface

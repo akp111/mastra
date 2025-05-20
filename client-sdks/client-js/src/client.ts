@@ -1,6 +1,18 @@
 import type { AbstractAgent } from '@ag-ui/client';
+import type { ServerDetailInfo } from '@mastra/core/mcp';
 import { AGUIAdapter } from './adapters/agui';
-import { Agent, MemoryThread, Tool, Workflow, Vector, BaseResource, Network, VNextWorkflow } from './resources';
+import {
+  Agent,
+  MemoryThread,
+  Tool,
+  Workflow,
+  Vector,
+  BaseResource,
+  Network,
+  VNextWorkflow,
+  A2A,
+  MCPTool,
+} from './resources';
 import type {
   ClientOptions,
   CreateMemoryThreadParams,
@@ -19,6 +31,9 @@ import type {
   GetWorkflowResponse,
   SaveMessageToMemoryParams,
   SaveMessageToMemoryResponse,
+  McpServerListResponse,
+  McpServerToolListResponse,
+  McpToolInfo,
 } from './types';
 
 export class MastraClient extends BaseResource {
@@ -255,5 +270,66 @@ export class MastraClient extends BaseResource {
    */
   public getNetwork(networkId: string) {
     return new Network(this.options, networkId);
+  }
+
+  /**
+   * Retrieves a list of available MCP servers.
+   * @param params - Optional parameters for pagination (limit, offset).
+   * @returns Promise containing the list of MCP servers and pagination info.
+   */
+  public getMcpServers(params?: { limit?: number; offset?: number }): Promise<McpServerListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit !== undefined) {
+      searchParams.set('limit', String(params.limit));
+    }
+    if (params?.offset !== undefined) {
+      searchParams.set('offset', String(params.offset));
+    }
+    const queryString = searchParams.toString();
+    return this.request(`/api/mcp/v0/servers${queryString ? `?${queryString}` : ''}`);
+  }
+
+  /**
+   * Retrieves detailed information for a specific MCP server.
+   * @param serverId - The ID of the MCP server to retrieve.
+   * @param params - Optional parameters, e.g., specific version.
+   * @returns Promise containing the detailed MCP server information.
+   */
+  public getMcpServerDetails(serverId: string, params?: { version?: string }): Promise<ServerDetailInfo> {
+    const searchParams = new URLSearchParams();
+    if (params?.version) {
+      searchParams.set('version', params.version);
+    }
+    const queryString = searchParams.toString();
+    return this.request(`/api/mcp/v0/servers/${serverId}${queryString ? `?${queryString}` : ''}`);
+  }
+
+  /**
+   * Retrieves a list of tools for a specific MCP server.
+   * @param serverId - The ID of the MCP server.
+   * @returns Promise containing the list of tools.
+   */
+  public getMcpServerTools(serverId: string): Promise<McpServerToolListResponse> {
+    return this.request(`/api/mcp/${serverId}/tools`);
+  }
+
+  /**
+   * Gets an MCPTool resource instance for a specific tool on an MCP server.
+   * This instance can then be used to fetch details or execute the tool.
+   * @param serverId - The ID of the MCP server.
+   * @param toolId - The ID of the tool.
+   * @returns MCPTool instance.
+   */
+  public getMcpServerTool(serverId: string, toolId: string): MCPTool {
+    return new MCPTool(this.options, serverId, toolId);
+  }
+
+  /**
+   * Gets an A2A client for interacting with an agent via the A2A protocol
+   * @param agentId - ID of the agent to interact with
+   * @returns A2A client instance
+   */
+  public getA2A(agentId: string) {
+    return new A2A(this.options, agentId);
   }
 }

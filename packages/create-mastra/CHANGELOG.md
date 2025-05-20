@@ -1,5 +1,45 @@
 # create-mastra
 
+## 0.3.4-alpha.0
+
+### Patch Changes
+
+- 99552bc: revamp the UI of the tools page
+- db4211d: improve the UI/UX of the runtime context with formatting, copying, docs and syntax highlighting
+- 9b7294a: Revamp the UI for the right sidebar of the agents page
+- e2c2cf1: Persist playground agent settings across refresh
+- 1270183: Add waterfull traces instead of stacked progressbar (UI improvement mostly)
+- 392a14d: changing the empty state for threads in agent chat
+
+## 0.3.3
+
+### Patch Changes
+
+- a3435f8: Add node engine to create-mastra project package.json
+
+## 0.3.3-alpha.0
+
+### Patch Changes
+
+- a3435f8: Add node engine to create-mastra project package.json
+
+## 0.3.2
+
+### Patch Changes
+
+- 0db0992: - add new --mcp option to cli
+  - add support for mcp in vscode
+  - include examples with --default flag
+- b5d2de0: In vNext workflow serializedStepGraph, return only serializedStepFlow for steps created from a workflow
+  allow viewing inner nested workflows in a multi-layered nested vnext workflow on the playground
+- 62c9e7d: Fix disappearing tool calls in streaming
+
+## 0.3.2-alpha.1
+
+### Patch Changes
+
+- 62c9e7d: Fix disappearing tool calls in streaming
+
 ## 0.3.2-alpha.0
 
 ### Patch Changes

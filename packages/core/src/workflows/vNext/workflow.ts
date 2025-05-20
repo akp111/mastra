@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import EventEmitter from 'events';
 import { z } from 'zod';
-import type { Mastra, WorkflowRun } from '../..';
+import type { Mastra, VNextWorkflowRun, VNextWorkflowRuns } from '../..';
 import type { MastraPrimitives } from '../../action';
 import { Agent } from '../../agent';
 import { MastraBase } from '../../base';
@@ -366,6 +366,10 @@ export class NewWorkflow<
     }
 
     this.#runs = new Map();
+  }
+
+  get runs() {
+    return this.#runs;
   }
 
   get mastra() {
@@ -745,6 +749,14 @@ export class NewWorkflow<
    * @returns A Run instance that can be used to execute the workflow
    */
   createRun(options?: { runId?: string }): Run<TSteps, TInput, TOutput> {
+    if (this.stepFlow.length === 0) {
+      throw new Error(
+        'Execution flow of workflow is not defined. Add steps to the workflow via .then(), .branch(), etc.',
+      );
+    }
+    if (!this.executionGraph.steps) {
+      throw new Error('Uncommitted step flow changes detected. Call .commit() to register the steps.');
+    }
     const runIdToUse = options?.runId || randomUUID();
 
     // Return a new Run instance with object parameters
@@ -784,7 +796,7 @@ export class NewWorkflow<
       resumePayload: any;
       runId?: string;
     };
-    emitter: EventEmitter;
+    emitter: { emit: (event: string, data: any) => void };
     mastra: Mastra;
   }): Promise<z.infer<TOutput>> {
     this.__registerMastra(mastra);
@@ -833,7 +845,7 @@ export class NewWorkflow<
       return { runs: [], total: 0 };
     }
 
-    return storage.getWorkflowRuns({ workflowName: this.id, ...(args ?? {}) });
+    return storage.getWorkflowRuns({ workflowName: this.id, ...(args ?? {}) }) as unknown as VNextWorkflowRuns;
   }
 
   async getWorkflowRunById(runId: string) {
@@ -842,11 +854,13 @@ export class NewWorkflow<
       this.logger.debug('Cannot get workflow runs. Mastra engine is not initialized');
       return null;
     }
-    const run = await storage.getWorkflowRunById({ runId, workflowName: this.id });
+    const run = (await storage.getWorkflowRunById({ runId, workflowName: this.id })) as unknown as VNextWorkflowRun;
 
     return (
       run ??
-      (this.#runs.get(runId) ? ({ ...this.#runs.get(runId), workflowName: this.id } as unknown as WorkflowRun) : null)
+      (this.#runs.get(runId)
+        ? ({ ...this.#runs.get(runId), workflowName: this.id } as unknown as VNextWorkflowRun)
+        : null)
     );
   }
 }
@@ -936,7 +950,12 @@ export class Run<
       runId: this.runId,
       graph: this.executionGraph,
       input: inputData,
-      emitter: this.emitter,
+      emitter: {
+        emit: (event: string, data: any) => {
+          this.emitter.emit(event, data);
+          return Promise.resolve();
+        },
+      },
       retryConfig: this.retryConfig,
       runtimeContext: runtimeContext ?? new RuntimeContext(),
     });
@@ -1014,7 +1033,12 @@ export class Run<
         // @ts-ignore
         resumePath: snapshot?.suspendedPaths?.[steps?.[0]] as any,
       },
-      emitter: this.emitter,
+      emitter: {
+        emit: (event: string, data: any) => {
+          this.emitter.emit(event, data);
+          return Promise.resolve();
+        },
+      },
       runtimeContext: params.runtimeContext ?? new RuntimeContext(),
     });
   }

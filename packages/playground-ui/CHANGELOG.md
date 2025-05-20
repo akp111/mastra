@@ -1,5 +1,147 @@
 # @mastra/playground-ui
 
+## 5.0.5-alpha.0
+
+### Patch Changes
+
+- 99552bc: revamp the UI of the tools page
+- 9b7294a: Revamp the UI for the right sidebar of the agents page
+- e2c2cf1: Persist playground agent settings across refresh
+- 1270183: Add waterfull traces instead of stacked progressbar (UI improvement mostly)
+- Updated dependencies [f53a6ac]
+- Updated dependencies [eabdcd9]
+- Updated dependencies [90be034]
+- Updated dependencies [ccdabdc]
+- Updated dependencies [99f050a]
+- Updated dependencies [d0ee3c6]
+- Updated dependencies [a6e3881]
+- Updated dependencies [fddae56]
+- Updated dependencies [23f258c]
+- Updated dependencies [2672a05]
+  - @mastra/client-js@0.1.23-alpha.0
+  - @mastra/core@0.9.5-alpha.0
+
+## 5.0.4
+
+### Patch Changes
+
+- cb1f698: Set runtimeContext from playground for agents, tools, workflows
+- Updated dependencies [396be50]
+- Updated dependencies [ab80e7e]
+- Updated dependencies [c2f9e60]
+- Updated dependencies [5c70b8a]
+- Updated dependencies [c3bd795]
+- Updated dependencies [da082f8]
+- Updated dependencies [b4c6c87]
+- Updated dependencies [0c3d117]
+- Updated dependencies [a5810ce]
+- Updated dependencies [3e9c131]
+- Updated dependencies [3171b5b]
+- Updated dependencies [c2b980b]
+- Updated dependencies [cb1f698]
+- Updated dependencies [973e5ac]
+- Updated dependencies [daf942f]
+- Updated dependencies [0b8b868]
+- Updated dependencies [9e1eff5]
+- Updated dependencies [6fa1ad1]
+- Updated dependencies [c28d7a0]
+- Updated dependencies [edf1e88]
+  - @mastra/core@0.9.4
+  - @mastra/client-js@0.1.22
+
+## 5.0.4-alpha.4
+
+### Patch Changes
+
+- Updated dependencies [5c70b8a]
+- Updated dependencies [3e9c131]
+  - @mastra/client-js@0.1.22-alpha.4
+  - @mastra/core@0.9.4-alpha.4
+
+## 5.0.4-alpha.3
+
+### Patch Changes
+
+- Updated dependencies [396be50]
+- Updated dependencies [c2f9e60]
+- Updated dependencies [c3bd795]
+- Updated dependencies [da082f8]
+- Updated dependencies [0c3d117]
+- Updated dependencies [a5810ce]
+  - @mastra/core@0.9.4-alpha.3
+  - @mastra/client-js@0.1.22-alpha.3
+
+## 5.0.4-alpha.2
+
+### Patch Changes
+
+- Updated dependencies [b4c6c87]
+- Updated dependencies [3171b5b]
+- Updated dependencies [c2b980b]
+- Updated dependencies [973e5ac]
+- Updated dependencies [9e1eff5]
+  - @mastra/client-js@0.1.22-alpha.2
+  - @mastra/core@0.9.4-alpha.2
+
+## 5.0.4-alpha.1
+
+### Patch Changes
+
+- Updated dependencies [ab80e7e]
+- Updated dependencies [6fa1ad1]
+- Updated dependencies [c28d7a0]
+- Updated dependencies [edf1e88]
+  - @mastra/core@0.9.4-alpha.1
+  - @mastra/client-js@0.1.22-alpha.1
+
+## 5.0.4-alpha.0
+
+### Patch Changes
+
+- cb1f698: Set runtimeContext from playground for agents, tools, workflows
+- Updated dependencies [cb1f698]
+- Updated dependencies [daf942f]
+- Updated dependencies [0b8b868]
+  - @mastra/client-js@0.1.22-alpha.0
+  - @mastra/core@0.9.4-alpha.0
+
+## 5.0.3
+
+### Patch Changes
+
+- b5d2de0: In vNext workflow serializedStepGraph, return only serializedStepFlow for steps created from a workflow
+  allow viewing inner nested workflows in a multi-layered nested vnext workflow on the playground
+- 62c9e7d: Fix disappearing tool calls in streaming
+- d2dfc37: Fix autoform number form default value
+- Updated dependencies [e450778]
+- Updated dependencies [8902157]
+- Updated dependencies [ca0dc88]
+- Updated dependencies [526c570]
+- Updated dependencies [36eb1aa]
+- Updated dependencies [d7a6a33]
+- Updated dependencies [9cd1a46]
+- Updated dependencies [b5d2de0]
+- Updated dependencies [62c9e7d]
+- Updated dependencies [644f8ad]
+- Updated dependencies [70dbf51]
+  - @mastra/core@0.9.3
+  - @mastra/client-js@0.1.21
+
+## 5.0.3-alpha.1
+
+### Patch Changes
+
+- 62c9e7d: Fix disappearing tool calls in streaming
+- Updated dependencies [e450778]
+- Updated dependencies [8902157]
+- Updated dependencies [ca0dc88]
+- Updated dependencies [36eb1aa]
+- Updated dependencies [9cd1a46]
+- Updated dependencies [62c9e7d]
+- Updated dependencies [70dbf51]
+  - @mastra/core@0.9.3-alpha.1
+  - @mastra/client-js@0.1.21-alpha.1
+
 ## 5.0.3-alpha.0
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { openai } from '@ai-sdk/openai';
+import { MockLanguageModelV1 } from 'ai/test';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { createTool, Mastra, Telemetry } from '../..';
@@ -12,6 +12,54 @@ import { cloneStep, cloneWorkflow, createStep, createWorkflow } from './workflow
 
 describe('Workflow', () => {
   describe('Basic Workflow Execution', () => {
+    it('should throw error when execution flow not defined', () => {
+      const execute = vi.fn<any>().mockResolvedValue({ result: 'success' });
+      const step1 = createStep({
+        id: 'step1',
+        execute,
+        inputSchema: z.object({}),
+        outputSchema: z.object({ result: z.string() }),
+      });
+
+      const workflow = createWorkflow({
+        id: 'test-workflow',
+        inputSchema: z.object({}),
+        outputSchema: z.object({
+          result: z.string(),
+        }),
+        steps: [step1],
+      });
+
+      expect(() => workflow.createRun()).toThrowError(
+        'Execution flow of workflow is not defined. Add steps to the workflow via .then(), .branch(), etc.',
+      );
+    });
+
+    it('should throw error when execution graph is not committed', () => {
+      const execute = vi.fn<any>().mockResolvedValue({ result: 'success' });
+      const step1 = createStep({
+        id: 'step1',
+        execute,
+        inputSchema: z.object({}),
+        outputSchema: z.object({ result: z.string() }),
+      });
+
+      const workflow = createWorkflow({
+        id: 'test-workflow',
+        inputSchema: z.object({}),
+        outputSchema: z.object({
+          result: z.string(),
+        }),
+        steps: [step1],
+      });
+
+      workflow.then(step1);
+
+      expect(() => workflow.createRun()).toThrowError(
+        'Uncommitted step flow changes detected. Call .commit() to register the steps.',
+      );
+    });
+
     it('should execute a single step workflow successfully', async () => {
       const execute = vi.fn<any>().mockResolvedValue({ result: 'success' });
       const step1 = createStep({
@@ -283,6 +331,50 @@ describe('Workflow', () => {
       });
 
       it('should resolve trigger data from getInitData', async () => {
+        const execute = vi.fn<any>().mockResolvedValue({ result: 'success' });
+        const triggerSchema = z.object({
+          cool: z.string(),
+        });
+
+        const step1 = createStep({
+          id: 'step1',
+          execute,
+          inputSchema: triggerSchema,
+          outputSchema: z.object({ result: z.string() }),
+        });
+
+        const step2 = createStep({
+          id: 'step2',
+          execute: async ({ getInitData }) => {
+            const initData = getInitData<typeof triggerSchema>();
+            return { result: initData };
+          },
+          inputSchema: z.object({ result: z.string() }),
+          outputSchema: z.object({ result: z.object({ cool: z.string() }) }),
+        });
+
+        const workflow = createWorkflow({
+          id: 'test-workflow',
+          inputSchema: triggerSchema,
+          outputSchema: z.object({ result: z.string() }),
+          steps: [step1, step2],
+        });
+
+        workflow.then(step1).then(step2).commit();
+
+        const run = workflow.createRun();
+        const result = await run.start({ inputData: { cool: 'test-input' } });
+
+        expect(execute).toHaveBeenCalledWith(
+          expect.objectContaining({
+            inputData: { cool: 'test-input' },
+          }),
+        );
+
+        expect(result.steps.step2).toEqual({ status: 'success', output: { result: { cool: 'test-input' } } });
+      });
+
+      it('should resolve trigger data from getInitData with workflow schema', async () => {
         const execute = vi.fn<any>().mockResolvedValue({ result: 'success' });
         const triggerSchema = z.object({
           cool: z.string(),
@@ -1961,6 +2053,7 @@ describe('Workflow', () => {
       });
 
       new Mastra({
+        logger: false,
         vnext_workflows: {
           'test-workflow': workflow,
         },
@@ -2003,6 +2096,7 @@ describe('Workflow', () => {
       });
 
       new Mastra({
+        logger: false,
         vnext_workflows: {
           'test-workflow': workflow,
         },
@@ -2090,13 +2184,7 @@ describe('Workflow', () => {
 
       let watchData: WatchEvent[] = [];
       const onTransition = data => {
-        watchData.push({
-          ...data,
-          payload: {
-            currentStep: data.payload.currentStep ? { ...data.payload.currentStep } : undefined,
-            workflowState: { ...data.payload.workflowState },
-          },
-        });
+        watchData.push(JSON.parse(JSON.stringify(data)));
       };
 
       const run = workflow.createRun();
@@ -2119,7 +2207,10 @@ describe('Workflow', () => {
             status: 'running',
             steps: {
               input: {},
-              step1: { status: 'success', output: { result: 'success1' } },
+              step1: {
+                status: 'success',
+                output: { result: 'success1' },
+              },
             },
             result: null,
             error: null,
@@ -2184,13 +2275,7 @@ describe('Workflow', () => {
 
       let watchData: WatchEvent[] = [];
       const onTransition = data => {
-        watchData.push({
-          ...data,
-          payload: {
-            currentStep: data.payload.currentStep ? { ...data.payload.currentStep } : undefined,
-            workflowState: { ...data.payload.workflowState },
-          },
-        });
+        watchData.push(JSON.parse(JSON.stringify(data)));
       };
 
       const run = workflow.createRun();
@@ -2214,7 +2299,10 @@ describe('Workflow', () => {
             status: 'running',
             steps: {
               input: {},
-              step1: { status: 'success', output: { result: 'success1' } },
+              step1: {
+                status: 'success',
+                output: { result: 'success1' },
+              },
             },
             result: null,
             error: null,
@@ -2318,12 +2406,22 @@ describe('Workflow', () => {
       }
     });
     it('should return the correct runId', async () => {
+      const execute = vi.fn<any>().mockResolvedValue({ result: 'success' });
+      const step1 = createStep({
+        id: 'step1',
+        execute,
+        inputSchema: z.object({}),
+        outputSchema: z.object({ result: z.string() }),
+      });
+
       const workflow = createWorkflow({
         id: 'test-workflow',
         inputSchema: z.object({}),
         outputSchema: z.object({}),
-        steps: [],
-      });
+        steps: [step1],
+      })
+        .then(step1)
+        .commit();
       const run = workflow.createRun();
       const run2 = workflow.createRun({ runId: run.runId });
 
@@ -2411,6 +2509,7 @@ describe('Workflow', () => {
       await initialStorage.init();
 
       new Mastra({
+        logger: false,
         storage: initialStorage,
         vnext_workflows: { 'test-workflow': promptEvalWorkflow },
       });
@@ -2530,6 +2629,7 @@ describe('Workflow', () => {
         .commit();
 
       new Mastra({
+        logger: false,
         vnext_workflows: { 'test-workflow': workflow },
       });
 
@@ -2701,6 +2801,7 @@ describe('Workflow', () => {
         .commit();
 
       new Mastra({
+        logger: false,
         vnext_workflows: { 'test-workflow': workflow },
       });
 
@@ -2712,10 +2813,14 @@ describe('Workflow', () => {
         let hasResumed = false;
         let hasResumedImproveResponse = false;
         run.watch(async data => {
-          const isHumanInterventionSuspended =
-            data.payload?.currentStep?.id === 'humanIntervention' && data.payload?.currentStep?.status === 'suspended';
-          const isImproveResponseSuspended =
-            data.payload?.currentStep?.id === 'improveResponse' && data.payload?.currentStep?.status === 'suspended';
+          const state = data.payload?.workflowState;
+
+          if (state.status !== 'suspended') {
+            return;
+          }
+
+          const isHumanInterventionSuspended = state.steps?.humanIntervention?.status === 'suspended';
+          const isImproveResponseSuspended = state.steps?.improveResponse?.status === 'suspended';
 
           if (isHumanInterventionSuspended) {
             if (!hasResumed) {
@@ -2748,6 +2853,7 @@ describe('Workflow', () => {
         });
       });
 
+      const result = await resultPromise;
       const initialResult = await started;
       expect(initialResult?.steps.improveResponse.status).toBe('suspended');
       // @ts-ignore
@@ -2757,7 +2863,6 @@ describe('Workflow', () => {
       expect(improvedResponseResult?.steps.improveResponse.status).toBe('success');
       expect(improvedResponseResult?.steps.evaluateImprovedResponse.status).toBe('success');
 
-      const result = await resultPromise;
       if (!result) {
         throw new Error('Resume failed to return a result');
       }
@@ -2865,6 +2970,7 @@ describe('Workflow', () => {
         .commit();
 
       new Mastra({
+        logger: false,
         vnext_workflows: { 'test-workflow': promptEvalWorkflow },
       });
 
@@ -2973,6 +3079,7 @@ describe('Workflow', () => {
         vnext_workflows: {
           'test-workflow': workflow,
         },
+        logger: false,
       });
 
       // Create a few runs
@@ -3012,6 +3119,7 @@ describe('Workflow', () => {
       workflow.then(step1).then(step2).commit();
 
       new Mastra({
+        logger: false,
         vnext_workflows: {
           'test-workflow': workflow,
         },
@@ -3052,6 +3160,7 @@ describe('Workflow', () => {
       workflow.then(step1).commit();
 
       new Mastra({
+        logger: false,
         vnext_workflows: { 'test-workflow': workflow },
       });
 
@@ -3078,13 +3187,27 @@ describe('Workflow', () => {
       const agent = new Agent({
         name: 'test-agent-1',
         instructions: 'test agent instructions',
-        model: openai('gpt-4'),
+        model: new MockLanguageModelV1({
+          doGenerate: async () => ({
+            rawCall: { rawPrompt: null, rawSettings: {} },
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            text: `Paris`,
+          }),
+        }),
       });
 
       const agent2 = new Agent({
         name: 'test-agent-2',
         instructions: 'test agent instructions',
-        model: openai('gpt-4'),
+        model: new MockLanguageModelV1({
+          doGenerate: async () => ({
+            rawCall: { rawPrompt: null, rawSettings: {} },
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            text: `London`,
+          }),
+        }),
       });
 
       const startStep = createStep({
@@ -3105,6 +3228,7 @@ describe('Workflow', () => {
       new Mastra({
         vnext_workflows: { 'test-workflow': workflow },
         agents: { 'test-agent-1': agent, 'test-agent-2': agent2 },
+        logger: false,
       });
 
       const agentStep1 = createStep(agent);
@@ -3173,13 +3297,27 @@ describe('Workflow', () => {
       const agent = new Agent({
         name: 'test-agent-1',
         instructions: 'test agent instructions',
-        model: openai('gpt-4'),
+        model: new MockLanguageModelV1({
+          doGenerate: async () => ({
+            rawCall: { rawPrompt: null, rawSettings: {} },
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            text: `Paris`,
+          }),
+        }),
       });
 
       const agent2 = new Agent({
         name: 'test-agent-2',
         instructions: 'test agent instructions',
-        model: openai('gpt-4'),
+        model: new MockLanguageModelV1({
+          doGenerate: async () => ({
+            rawCall: { rawPrompt: null, rawSettings: {} },
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            text: `London`,
+          }),
+        }),
       });
 
       const startStep = createStep({
@@ -3198,6 +3336,7 @@ describe('Workflow', () => {
       });
 
       new Mastra({
+        logger: false,
         vnext_workflows: { 'test-workflow': workflow },
         agents: { 'test-agent-1': agent, 'test-agent-2': agent2 },
       });
@@ -3269,13 +3408,27 @@ describe('Workflow', () => {
       const agent = new Agent({
         name: 'test-agent-1',
         instructions: 'test agent instructions',
-        model: openai('gpt-4'),
+        model: new MockLanguageModelV1({
+          doGenerate: async () => ({
+            rawCall: { rawPrompt: null, rawSettings: {} },
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            text: `Paris`,
+          }),
+        }),
       });
 
       const agent2 = new Agent({
         name: 'test-agent-2',
         instructions: 'test agent instructions',
-        model: openai('gpt-4'),
+        model: new MockLanguageModelV1({
+          doGenerate: async () => ({
+            rawCall: { rawPrompt: null, rawSettings: {} },
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            text: `London`,
+          }),
+        }),
       });
 
       const startStep = createStep({
@@ -3294,6 +3447,7 @@ describe('Workflow', () => {
       });
 
       new Mastra({
+        logger: false,
         vnext_workflows: { 'test-workflow': workflow },
         agents: { 'test-agent-1': agent, 'test-agent-2': agent2 },
       });
@@ -3368,16 +3522,29 @@ describe('Workflow', () => {
       const agent = new Agent({
         name: 'test-agent-1',
         instructions: 'test agent instructions',
-        model: openai('gpt-4'),
+        model: new MockLanguageModelV1({
+          doGenerate: async () => ({
+            rawCall: { rawPrompt: null, rawSettings: {} },
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            text: `Paris`,
+          }),
+        }),
       });
-
       const agent2 = new Agent({
         name: 'test-agent-2',
         instructions: 'test agent instructions',
-        model: openai('gpt-4'),
+        model: new MockLanguageModelV1({
+          doGenerate: async () => ({
+            rawCall: { rawPrompt: null, rawSettings: {} },
+            finishReason: 'stop',
+            usage: { promptTokens: 10, completionTokens: 20 },
+            text: `London`,
+          }),
+        }),
       });
-
       new Mastra({
+        logger: false,
         vnext_workflows: { 'test-workflow': workflow },
         agents: { 'test-agent-1': agent, 'test-agent-2': agent2 },
       });
@@ -4287,6 +4454,7 @@ describe('Workflow', () => {
           .commit();
 
         new Mastra({
+          logger: false,
           vnext_workflows: { counterWorkflow },
         });
 
@@ -4551,6 +4719,7 @@ describe('Workflow', () => {
         .commit();
 
       new Mastra({
+        logger: false,
         vnext_workflows: { counterWorkflow },
       });
 

@@ -1,7 +1,8 @@
 "use client";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "./ui/card";
 
 export function CardItem({
@@ -16,7 +17,10 @@ export function CardItem({
           <Link
             key={`${item.title}-${item.href}`}
             href={item.href}
-            className="flex bg-[#1a1a1a]/50 mb-0 border-[0.5px]  rounded-md dark:border-[#343434] items-center group justify-between p-2 px-4 text-sm"
+            style={{
+              textDecoration: "none",
+            }}
+            className="flex bg-[var(--light-color-surface-3)]  dark:bg-[#1a1a1a]/50 mb-0 border-[0.5px]  rounded-md dark:border-[#343434] border-[var(--light-border-muted)] items-center group justify-between p-2 px-4 text-sm"
           >
             {item.title}
           </Link>
@@ -26,25 +30,67 @@ export function CardItem({
   );
 }
 
-export function CardItems({
+function CardItemsInner({
   titles,
   items,
 }: {
   titles: string[];
   items: Record<string, Array<{ title: string; href: string }>>;
 }) {
-  const [activeTab, setActiveTab] = useState(titles[0]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const slugify = (str: string) =>
+    str
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+  const listParam = searchParams?.get("list") ?? "";
+  const initialTab = useMemo(() => {
+    const match = titles.find((t) => slugify(t) === slugify(listParam));
+    return match ?? titles[0];
+  }, [listParam, titles]);
+
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    const match = titles.find((t) => slugify(t) === slugify(listParam));
+    if (match && match !== activeTab) {
+      setActiveTab(match);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listParam, titles]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams?.toString());
+    params.set("list", slugify(tab));
+    router.replace(`${pathname}?${params.toString()}`);
+  };
   return (
     <div>
       <CardTitle
         titles={titles}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleTabChange}
       />
       <div className="mt-6">
         <CardItem links={items[activeTab] || []} />
       </div>
     </div>
+  );
+}
+
+export function CardItems(props: {
+  titles: string[];
+  items: Record<string, Array<{ title: string; href: string }>>;
+}) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CardItemsInner {...props} />
+    </Suspense>
   );
 }
 
@@ -64,9 +110,9 @@ export function CardTitle({
           onClick={() => setActiveTab(title)}
           key={title}
           className={cn(
-            "capitalize  rounded-full text-sm bg-gray-100 dark:bg-[#1a1a1a] px-3 py-1",
+            "capitalize text-[var(--light-color-text-4)] rounded-full text-sm bg-[var(--light-color-surface-3)] dark:bg-[#1a1a1a] dark:text-[var(--color-el-3)] px-3 py-1",
             activeTab === title &&
-              "dark:bg-gray-100 text-white bg-slate-800 dark:text-black",
+              "dark:bg-gray-100 text-white bg-[var(--light-color-text-5)] dark:text-black",
           )}
         >
           {title}

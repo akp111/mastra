@@ -1,5 +1,135 @@
 # @mastra/client-js
 
+## 0.1.23-alpha.0
+
+### Patch Changes
+
+- f53a6ac: Add VNextWorkflowRuns type
+- ccdabdc: Remove trailing / from mastraClient baseUrl
+- a6e3881: Remove non serializable options from agent stream,generate
+- fddae56: Add telemetry to cliend SDK streamParams
+- 23f258c: Add new list and get routes for mcp servers. Changed route make-up for more consistency with existing API routes. Lastly, added in a lot of extra detail that can be optionally passed to the mcp server per the mcp spec.
+- 2672a05: Add MCP servers and tool call execution to playground
+- Updated dependencies [f53a6ac]
+- Updated dependencies [eabdcd9]
+- Updated dependencies [90be034]
+- Updated dependencies [99f050a]
+- Updated dependencies [d0ee3c6]
+- Updated dependencies [23f258c]
+- Updated dependencies [2672a05]
+  - @mastra/core@0.9.5-alpha.0
+
+## 0.1.22
+
+### Patch Changes
+
+- c2f9e60: Resolves type issue and listen response string wrapped in text object twice
+- 5c70b8a: [MASTRA-3234] added limit for client-js getMessages
+- b4c6c87: fix: Specify $refStrategy: 'none' when calling zodToJsonSchema.
+- 0c3d117: Add workflows to agent server handlers
+- a5810ce: Add support for experimental_generateMessageId and remove it from client-js types since it's not serializable
+- c2b980b: Fix multiple too-calls in AGUI
+- cb1f698: Set runtimeContext from playground for agents, tools, workflows
+- 0b8b868: Added A2A support + streaming
+- Updated dependencies [396be50]
+- Updated dependencies [ab80e7e]
+- Updated dependencies [c3bd795]
+- Updated dependencies [da082f8]
+- Updated dependencies [a5810ce]
+- Updated dependencies [3e9c131]
+- Updated dependencies [3171b5b]
+- Updated dependencies [973e5ac]
+- Updated dependencies [daf942f]
+- Updated dependencies [0b8b868]
+- Updated dependencies [9e1eff5]
+- Updated dependencies [6fa1ad1]
+- Updated dependencies [c28d7a0]
+- Updated dependencies [edf1e88]
+  - @mastra/core@0.9.4
+
+## 0.1.22-alpha.4
+
+### Patch Changes
+
+- 5c70b8a: [MASTRA-3234] added limit for client-js getMessages
+- Updated dependencies [3e9c131]
+  - @mastra/core@0.9.4-alpha.4
+
+## 0.1.22-alpha.3
+
+### Patch Changes
+
+- c2f9e60: Resolves type issue and listen response string wrapped in text object twice
+- 0c3d117: Add workflows to agent server handlers
+- a5810ce: Add support for experimental_generateMessageId and remove it from client-js types since it's not serializable
+- Updated dependencies [396be50]
+- Updated dependencies [c3bd795]
+- Updated dependencies [da082f8]
+- Updated dependencies [a5810ce]
+  - @mastra/core@0.9.4-alpha.3
+
+## 0.1.22-alpha.2
+
+### Patch Changes
+
+- b4c6c87: fix: Specify $refStrategy: 'none' when calling zodToJsonSchema.
+- c2b980b: Fix multiple too-calls in AGUI
+- Updated dependencies [3171b5b]
+- Updated dependencies [973e5ac]
+- Updated dependencies [9e1eff5]
+  - @mastra/core@0.9.4-alpha.2
+
+## 0.1.22-alpha.1
+
+### Patch Changes
+
+- Updated dependencies [ab80e7e]
+- Updated dependencies [6fa1ad1]
+- Updated dependencies [c28d7a0]
+- Updated dependencies [edf1e88]
+  - @mastra/core@0.9.4-alpha.1
+
+## 0.1.22-alpha.0
+
+### Patch Changes
+
+- cb1f698: Set runtimeContext from playground for agents, tools, workflows
+- 0b8b868: Added A2A support + streaming
+- Updated dependencies [daf942f]
+- Updated dependencies [0b8b868]
+  - @mastra/core@0.9.4-alpha.0
+
+## 0.1.21
+
+### Patch Changes
+
+- 526c570: expose agent runtimeContext from clientSDK
+- 36eb1aa: Fix AGUI text part
+- 62c9e7d: Fix disappearing tool calls in streaming
+- Updated dependencies [e450778]
+- Updated dependencies [8902157]
+- Updated dependencies [ca0dc88]
+- Updated dependencies [526c570]
+- Updated dependencies [d7a6a33]
+- Updated dependencies [9cd1a46]
+- Updated dependencies [b5d2de0]
+- Updated dependencies [644f8ad]
+- Updated dependencies [70dbf51]
+  - @mastra/core@0.9.3
+
+## 0.1.21-alpha.1
+
+### Patch Changes
+
+- 36eb1aa: Fix AGUI text part
+- 62c9e7d: Fix disappearing tool calls in streaming
+- Updated dependencies [e450778]
+- Updated dependencies [8902157]
+- Updated dependencies [ca0dc88]
+- Updated dependencies [9cd1a46]
+- Updated dependencies [70dbf51]
+  - @mastra/core@0.9.3-alpha.1
+
 ## 0.1.21-alpha.0
 
 ### Patch Changes
